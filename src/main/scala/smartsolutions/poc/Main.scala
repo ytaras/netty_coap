@@ -1,11 +1,12 @@
 package smartsolutions.poc
 
-import _root_.akka.actor.{ActorSystem, Props}
+import _root_.akka.actor._
+import _root_.akka.cluster.Cluster
 import _root_.akka.pattern.ask
 import _root_.akka.routing.BalancingPool
 import com.typesafe.config.ConfigFactory
 import smartsolutions.poc.akka.Counter.{Get, Inc}
-import smartsolutions.poc.akka.{Counter, SampleActor}
+import smartsolutions.poc.akka.{FactorialFrontend, FactorialBackend, Counter, SampleActor}
 
 import scala.concurrent.duration._
 import scala.util.{Success, Failure}
@@ -15,21 +16,33 @@ import scala.util.{Success, Failure}
   */
 object Main extends App {
 
-  val systems = Seq("2551", "2552", "0") map { port =>
+  Seq("2551", "2552", "0") foreach { port =>
     val config = ConfigFactory.parseString(s"akka.remote.netty.tcp.port=${port}")
+      .withFallback(ConfigFactory.parseString("akka.cluster.roles = [backend]"))
       .withFallback(ConfigFactory.load())
     val system = ActorSystem("ClusterSystem", config)
-    system
+    system.actorOf(Props[FactorialBackend], name = "factorialBackend")
   }
 
-  val system = systems.head
-  val logger = system.actorOf(Props[SampleActor])
-  val router = system.actorOf(BalancingPool(5).props(Props[Counter]), "router")
-  for {
-    i <- 1 to 10000
-  } router ! Inc
-  implicit val timeout = _root_.akka.util.Timeout(5.seconds)
-  import scala.concurrent.ExecutionContext.Implicits._
-  logger ! 1
-  router ! Get(logger)
+  val config = ConfigFactory.parseString(s"akka.remote.netty.tcp.port=0")
+    .withFallback(ConfigFactory.parseString("akka.cluster.roles = [frontend]"))
+    .withFallback(ConfigFactory.load())
+
+  val frontendSystem = ActorSystem("ClusterSystem", config)
+  Cluster(frontendSystem) registerOnMemberUp {
+    frontendSystem.actorOf(Props(classOf[FactorialFrontend], 200, true), name = "factorialFrontend") ! "start"
+  }
+  Cluster(frontendSystem) registerOnMemberRemoved {
+    frontendSystem.registerOnTermination(System.exit(-1))
+    frontendSystem.scheduler.scheduleOnce(10.seconds)(System.exit(-1))(frontendSystem.dispatcher)
+    frontendSystem.terminate()
+  }
+  class Listener extends Actor with ActorLogging {
+    def receive = {
+      case d : DeadLetter => log.info(s"Dead letter: ${d.recipient.path}")
+    }
+  }
+//  val listener = frontendSystem.actorOf(Props[Listener])
+//  frontendSystem.eventStream.subscribe(listener, classOf[DeadLetter])
+
 }
