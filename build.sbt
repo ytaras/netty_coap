@@ -10,5 +10,6 @@ libraryDependencies ++= Seq(
   "com.typesafe.akka" %% "akka-actor" % "2.4.1",
   "com.typesafe.akka" %% "akka-cluster" % "2.4.1",
   "com.typesafe.akka" %% "akka-cluster-tools" % "2.4.1",
-  "io.kamon" % "sigar-loader" % "1.6.6-rev002"
+  "io.kamon" % "sigar-loader" % "1.6.6-rev002",
+  "org.eclipse.californium" % "californium-core" % "1.0.0"
 )
