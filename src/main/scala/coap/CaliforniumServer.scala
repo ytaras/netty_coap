@@ -1,6 +1,7 @@
 package coap
 
-import akka.actor.ActorRef
+import actors.{ResultsActor, PublishValueActor}
+import akka.actor.{Props, ActorSystem, ActorRef}
 import akka.pattern.ask
 import coap.CaliforniumServer.Exchange
 import org.eclipse.californium.core.coap.CoAP
@@ -13,17 +14,17 @@ import scala.concurrent.duration._
 /**
   * Created by ytaras on 12/8/15.
   */
-class CaliforniumServer(actor: ActorRef)(implicit ec: ExecutionContext) extends CoapServer {
-  add(new HelloWorldResource(actor))
+class CaliforniumServer(system: ActorSystem) extends CoapServer {
+  implicit val ec = system.dispatcher
+  val dataStreamActor = system.actorOf(Props[PublishValueActor], "CoapPublisher")
+  add(new PublishValueResource(dataStreamActor))
+  val resultsActor = system.actorOf(Props[ResultsActor], "ResultsFromSpark")
+  add(new ResultsCoapResource(resultsActor))
+
+  start()
 }
 
 object CaliforniumServer {
-
-  def apply(actor: ActorRef)(implicit ec: ExecutionContext) = {
-    val server = new CaliforniumServer(actor)
-    server.start()
-    server
-  }
 
   sealed trait Exchange {
     def path: String
@@ -44,15 +45,20 @@ object CaliforniumServer {
   case class Put(text: String, path: String) extends Exchange
 }
 
-class HelloWorldResource(actor: ActorRef)(implicit val ec: ExecutionContext) extends CoapResource("helloWorld") {
+class PublishValueResource(actor: ActorRef)(implicit val ec: ExecutionContext) extends CoapResource("helloWorld") {
   setObservable(true)
-  getAttributes.setTitle("Hello world resource")
+  getAttributes.setTitle("publish data")
 
   override def handlePUT(exchange: CoapExchange): Unit = {
     actor ! Exchange(exchange, getPath)
     exchange.respond(CoAP.ResponseCode.CHANGED)
-    changed()
   }
+
+}
+class ResultsCoapResource(actor: ActorRef)(implicit val ec: ExecutionContext) extends CoapResource("results") {
+  actor ! this
+  setObservable(true)
+  getAttributes.setTitle("observe results")
 
   override def handleGET(exchange: CoapExchange): Unit = {
     exchangeFuture(exchange) foreach { result =>

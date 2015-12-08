@@ -1,23 +1,26 @@
 package actors
 
-import akka.actor.{ActorRef, Actor, ActorLogging}
-import coap.CaliforniumServer
-import coap.CaliforniumServer.{Put, Get}
+import akka.actor.{Actor, ActorLogging, ActorRef}
+import coap.CaliforniumServer.{Get, Put}
+import coap.ResultsCoapResource
 
-/**
-  * Created by ytaras on 12/8/15.
-  */
-class CaliforniumServerActor extends Actor with ActorLogging {
-  val server = CaliforniumServer(self)(context.dispatcher)
+class PublishValueActor extends Actor with ActorLogging {
   var subscribers: Set[ActorRef] = Set.empty
-  var value = ""
-  override def receive: Receive = {
-    case Get(_) => sender ! value
-    case Put(x, _) => {
-      value = x
-      subscribers foreach { _ ! value }
-    }
+  def receive = {
+    case Put(x, _) => subscribers foreach { _ ! x }
     case Subscribe => subscribers += sender()
+  }
+}
+
+class ResultsActor extends Actor with ActorLogging {
+  var value: String = ""
+  var coapResource: ResultsCoapResource = null
+  def receive = {
+    case c: ResultsCoapResource => coapResource = c
+    case Get(_) => sender ! value
+    case x : String =>
+      value = x
+      coapResource.changed()
   }
 }
 
