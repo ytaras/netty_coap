@@ -7,6 +7,6 @@ import akka.actor.{Actor, ActorLogging}
   */
 class SampleActor extends Actor with ActorLogging {
   override def receive: Receive = {
-    case x: String => log.info(s"Received string ${x}")
+    case x => log.info(s"Received string ${x}")
   }
 }
