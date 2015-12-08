@@ -5,7 +5,7 @@ import org.apache.spark.streaming.{Seconds, StreamingContext}
 import org.apache.spark.{SparkConf, SparkContext}
 
 object SparkEtl {
-  def start(remoteActor: ActorPath) = {
+  def start(remoteActor: String) = {
     val stream = ssc.actorStream[String](Props(classOf[DataReceiver], remoteActor), "StringToSparkReceiver")
     stream.print()
     ssc.start()
@@ -15,7 +15,7 @@ object SparkEtl {
   val ssc = new StreamingContext(sc, Seconds(1))
 }
 
-class DataReceiver(remoteActorRef: ActorPath) extends Actor with ActorHelper {
+class DataReceiver(remoteActorRef: String) extends Actor with ActorHelper {
   override def preStart = context.actorSelection(remoteActorRef) ! Subscribe
   override def receive = {
     case x => store(x)
