@@ -1,49 +1,50 @@
-import akka.actor._
-import coap.CaliforniumServer
-import org.eclipse.californium.core.{CoapResponse, CoapHandler, CoapClient}
-import org.eclipse.californium.core.coap.MediaTypeRegistry
-import scala.concurrent.duration._
+import java.util.Properties
 
-/**
-  * Created by ytaras on 12/8/15.
-  */
-object Main extends App {
+import org.apache.kafka.clients.producer.{KafkaProducer, ProducerRecord}
+import org.apache.spark.streaming.kafka.KafkaUtils
+import org.apache.spark.{SparkConf, SparkContext}
+import org.apache.spark.streaming.{Seconds, StreamingContext}
+import org.eclipse.californium.core.{CoapClient, CoapHandler, CoapResponse}
 
-  val system = ActorSystem("CoapSystem")
-  val californiumServer = new CaliforniumServer(system)
-  val dataStream = californiumServer.dataStreamActor
-  val serverAddr = dataStream.path.toStringWithAddress(RemoteAddressExtension(system).address)
-  SparkEtl.start(serverAddr, californiumServer.resultsActor)
-  Thread.sleep(30.seconds.toMillis)
-  Client.run()
+class Kafka {
+  val props = new Properties()
+  props.setProperty("bootstrap.servers", "localhost:9092")
+  props.setProperty("key.serializer", "org.apache.kafka.common.serialization.StringSerializer")
+  props.setProperty("value.serializer", "org.apache.kafka.common.serialization.StringSerializer")
+  val producer: KafkaProducer[String, String] = new KafkaProducer(props)
 }
 
-object Client {
-  def run(): Unit = {
-    val resultClient = new CoapClient("coap://10.128.194.202:5683/results")
-    resultClient.observe(new CoapHandler {
-      override def onError(): Unit = {
-        print("ERRROROR")
-        System.exit(-1)
-      }
+object Main extends App {
+  val kafka = new Kafka
+  val handler = new CoapHandler {
+    override def onError(): Unit = print("Error!")
 
-      override def onLoad(response: CoapResponse): Unit = {
-        print("Result!!!")
-        print(response.getPayload.map(_.toChar).mkString)
-      }
-    })
-
-    val valueClient = new CoapClient("coap://10.128.194.202:5683/helloWorld")
-    while(true) {
-      valueClient.put("Text Text duplicated", MediaTypeRegistry.TEXT_PLAIN)
-      Thread.sleep(10)
+    override def onLoad(response: CoapResponse): Unit = {
+      val str = response.getPayload.map{_.toChar}.mkString
+      kafka.producer.send(new ProducerRecord("topic", response.advanced().getSource.toString, response.getResponseText))
     }
+  }
+
+  def observe() {
+    val client = new CoapClient("coap://vs0.inf.ethz.ch:5683/obs")
+    client.observe(handler)
 
   }
+  for {
+    i <- 1 to 1000
+  } observe()
+
+  Spark
 }
 
-class RemoteAddressExtensionImpl(system: ExtendedActorSystem) extends Extension {
-  def address = system.provider.getDefaultAddress
+object Spark {
+  val sparkConf = new SparkConf().setMaster("local[2]").setAppName("My cool app")
+  val sc = new SparkContext(sparkConf)
+  val ssc = new StreamingContext(sc, Seconds(2))
+  val reader = KafkaUtils.createStream(ssc, "localhost:2181", "consumegroup", Map("topic" -> 1))
+  reader.reduceByKey(_ + _).print
+  ssc.start()
+  ssc.awaitTermination()
 }
 
-object RemoteAddressExtension extends ExtensionKey[RemoteAddressExtensionImpl]
+
