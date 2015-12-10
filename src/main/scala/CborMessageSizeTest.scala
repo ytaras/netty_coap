@@ -3,7 +3,9 @@ import java.time.ZonedDateTime
 
 import co.nstant.in.cbor.CborEncoder
 import co.nstant.in.cbor.builder.MapBuilder
-import squants.storage.Megabytes
+import org.eclipse.californium.core.coap.{CoAP, Response, Request}
+import org.eclipse.californium.core.network.serialization.Serializer
+import squants.storage.{Kilobytes, Megabytes}
 import squants.storage.StorageConversions._
 import squants.time.TimeConversions._
 
@@ -14,29 +16,55 @@ object CborMessageSizeTest extends App {
   val doorOpenPeriod = 1.minutes
   val sensorPeriod = 30.seconds
   val sendPeriod = 1.minutes
+
+  val ser = new Serializer
   val sendCount: Int = (31.days / sendPeriod).toInt
   val sequence: Int = (sendPeriod / sensorPeriod).toInt
   val doorSequence: Int = (sendPeriod / doorOpenPeriod).toInt * 2
-  val oneMessageSize = messageSize(sequence, doorSequence)
-  val wholePayload = (oneMessageSize * sendCount).in(Megabytes)
+  val message = {
+    val result = Coder.generate(sequence, doorSequence)
+    val baos = new ByteArrayOutputStream()
+    new CborEncoder(baos).encode(result)
+    baos.toByteArray
+  }
+
+  val messageSize = {
+    message.size.bytes
+  }
+  val wholePayload = (messageSize * sendCount).in(Megabytes)
+  val token = "1234".getBytes
+  val req: Request = {
+    val r = Request.newGet()
+    r.setType(CoAP.Type.CON)
+    r.setObserve().setURI("coap://127.0.0.1:123/coap/server/adsf").setToken(token)
+    r
+  }
+  val coapRequestSize = {
+    ser.serialize(req).getBytes.size.bytes
+  }
+  val coapResponseSize = {
+    val response: Response = Response.createResponse(req, CoAP.ResponseCode.CHANGED)
+    response.setPayload(message).setToken(token).setType(CoAP.Type.ACK)
+    ser.serialize(response).getBytes.size.bytes
+  }
+  val wholeTraffic = (coapRequestSize + coapResponseSize * sendCount).in(Megabytes)
   print(
     s"""
        |Door opens and closes every $doorOpenPeriod
        |We gather data from sensors every $sensorPeriod
        |We send data each $sendPeriod, which means we send $sequence sensor metrics and $doorSequence door events each time
        |We have 3 metrics - light, voltage, temp, which means we send ${3*sequence} measurements
-       |Message size is $oneMessageSize
+       |Message size is $messageSize
        |We send $sendCount messages per month which means $wholePayload payload
        |This does not include CoAP overhead AND server responses
+       |One CoAP request has size $coapRequestSize
+       |One response with given payload $coapResponseSize
+       |With subscribe model we have 1 request and $sendCount responses, which gives us $wholeTraffic traffic
      """.stripMargin)
 
 
-  def messageSize(sequence: Int, doorSequence: Int) = {
-    val result = Coder.generate(sequence, doorSequence)
-    val baos = new ByteArrayOutputStream()
-    new CborEncoder(baos).encode(result)
-    baos.toByteArray.size.bytes
-  }
+
+
 }
 
 object Coder {
