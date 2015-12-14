@@ -15,6 +15,7 @@ libraryDependencies ++= Seq(
   "org.apache.spark" %% "spark-streaming" % "1.5.2",
   "org.apache.spark" %% "spark-streaming-kafka" % "1.5.2",
   "com.squants"  %% "squants"  % "0.6.1-SNAPSHOT",
+  "io.netty" % "netty-all" % "4.0.33.Final",
   "co.nstant.in" % "cbor" % "0.5")
 
 resolvers += "Sonatype OSS Snapshots" at "https://oss.sonatype.org/content/repositories/snapshots"
