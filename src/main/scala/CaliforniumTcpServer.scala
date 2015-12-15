@@ -1,23 +1,24 @@
-import java.net.{SocketAddress, InetSocketAddress}
+import java.net.InetSocketAddress
 import java.util
-import java.util.concurrent.{ConcurrentLinkedQueue, ConcurrentHashMap}
+import java.util.concurrent.{ConcurrentHashMap, ConcurrentLinkedQueue, TimeUnit}
 
 import io.netty.bootstrap.ServerBootstrap
 import io.netty.buffer.ByteBuf
+import io.netty.channel._
 import io.netty.channel.nio.NioEventLoopGroup
 import io.netty.channel.socket.SocketChannel
-import io.netty.channel.socket.nio.{NioSocketChannel, NioServerSocketChannel}
-import io.netty.channel._
+import io.netty.channel.socket.nio.NioServerSocketChannel
 import io.netty.handler.codec.ByteToMessageCodec
 import io.netty.handler.logging.{LogLevel, LoggingHandler}
+import io.netty.handler.timeout.ReadTimeoutHandler
 import io.netty.util.internal.logging.InternalLoggerFactory
+import netty.coap.RawDataCodec
+import org.eclipse.californium.core._
 import org.eclipse.californium.core.coap.Request
 import org.eclipse.californium.core.network.CoapEndpoint
 import org.eclipse.californium.core.network.config.NetworkConfig
-import org.eclipse.californium.core.network.serialization.{DataParser, Serializer}
-import org.eclipse.californium.core.server.resources.CoapExchange
-import org.eclipse.californium.core._
-import org.eclipse.californium.elements.{RawDataChannel, ConnectorBase, RawData}
+import org.eclipse.californium.core.network.serialization.DataParser
+import org.eclipse.californium.elements.{ConnectorBase, RawData}
 
 /**
   * Created by ytaras on 12/14/15.
@@ -40,6 +41,10 @@ object WriteToConsole extends CoapHandler {
 }
 
 class TcpConnector(inetSocketAddress: InetSocketAddress) extends ConnectorBase(inetSocketAddress) {
+  def stopped(ctx: ChannelHandlerContext) = {
+    channelsRegistry.remove(ctx.channel().remoteAddress())
+  }
+
   def message(data: RawData): Unit = inboundMessageQueue.add(data)
   val inboundMessageQueue = new ConcurrentLinkedQueue[RawData]()
   val channelsRegistry = new ConcurrentHashMap[InetSocketAddress, ChannelHandlerContext]()
@@ -64,6 +69,8 @@ class TcpConnector(inetSocketAddress: InetSocketAddress) extends ConnectorBase(i
 }
 
 class CoapTcpServer(inetAddress: InetSocketAddress) {
+  def stopped(ctx: ChannelHandlerContext) = connector.stopped(ctx)
+
   def toCoap(a: InetSocketAddress): String =
     s"coap://${a.getHostString}:${a.getPort}"
 
@@ -75,8 +82,10 @@ class CoapTcpServer(inetAddress: InetSocketAddress) {
     connector.started(ctx)
     val client = new CoapClient(toCoap(remote))
     client.setEndpoint(coapEndpoint)
-    client.get(WriteToConsole)
-    client.observe(WriteToConsole)
+    val get = Request.newGet()
+    client.advanced(WriteToConsole, get)
+    get.cancel()
+//    client.observe(WriteToConsole)
   }
 
   val bossGroup = new NioEventLoopGroup(1)
@@ -114,6 +123,7 @@ class AcceptListener extends LoggingHandler(LogLevel.WARN) {
 class CoapTcpChannelInitializer(parent: CoapTcpServer) extends ChannelInitializer[SocketChannel] {
   override def initChannel(ch: SocketChannel): Unit = {
     ch.pipeline()
+      .addLast(new ReadTimeoutHandler(1, TimeUnit.SECONDS))
       .addLast(new RawDataCodec)
       .addLast(new LoggingHandler(LogLevel.INFO))
       .addLast(new CoapChannelHandler(parent))
@@ -132,37 +142,16 @@ class CoapChannelHandler(parent: CoapTcpServer) extends ChannelInboundHandlerAda
     super.channelRead(ctx, msg)
     parent.message(msg.asInstanceOf[RawData])
   }
-}
 
-class RawDataCodec extends ByteToMessageCodec[RawData] {
-  private val logger = InternalLoggerFactory.getInstance(classOf[RawDataCodec])
-  override def encode(ctx: ChannelHandlerContext, msg: RawData, out: ByteBuf): Unit = {
-    val size = msg.getSize
-    val p = new DataParser(msg.getBytes)
-    logger.info(s"Writing ${p.parseRequest()}")
-    out.writeBytes("%02X".format(size).getBytes())
-    out.writeBytes(msg.getBytes)
+  override def exceptionCaught(ctx: ChannelHandlerContext, cause: Throwable): Unit = {
+    parent.stopped(ctx)
   }
 
-  override def decode(ctx: ChannelHandlerContext, in: ByteBuf, out: util.List[AnyRef]): Unit = {
-    if(!in.isReadable(2))
-      return
-    in.markReaderIndex()
-    val bytes = new Array[Byte](2)
-    in.readBytes(bytes)
-    val strSize = bytes.map{_.toChar}.mkString
-    val size = Integer.parseInt(strSize)
-    logger.info(s"Size is $strSize, $size")
-    if(!in.isReadable(size)) {
-      in.resetReaderIndex()
-      return
-    }
-    val buf = new Array[Byte](size)
-    in.readBytes(buf)
-    val res = new RawData(buf, ctx.channel().asInstanceOf[SocketChannel].remoteAddress())
-    val data = buf.map(_.toChar).mkString
-    logger.info(s"Received data: $data")
-    out.add(res)
+  override def channelInactive(ctx: ChannelHandlerContext): Unit = {
+    parent.stopped(ctx)
+    super.channelInactive(ctx)
   }
 }
+
+
 
