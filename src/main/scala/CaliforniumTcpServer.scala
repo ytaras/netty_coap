@@ -16,7 +16,7 @@ import org.eclipse.californium.core.network.CoapEndpoint
 import org.eclipse.californium.core.network.config.NetworkConfig
 import org.eclipse.californium.core.network.serialization.{DataParser, Serializer}
 import org.eclipse.californium.core.server.resources.CoapExchange
-import org.eclipse.californium.core.{CoapClient, CoapResource, CoapServer}
+import org.eclipse.californium.core._
 import org.eclipse.californium.elements.{RawDataChannel, ConnectorBase, RawData}
 
 /**
@@ -30,6 +30,13 @@ object CaliforniumTcpServer extends App {
 ////  server.addEndpoint(new CoapEndpoint(new TcpConnector, NetworkConfig.getStandard))
 //  server.start()
   new CoapTcpServer(local).start
+}
+object WriteToConsole extends CoapHandler {
+  val logger = InternalLoggerFactory.getInstance(getClass)
+
+  override def onError(): Unit = logger.error("Some error!")
+
+  override def onLoad(response: CoapResponse): Unit = logger.info(s"Loaded response $response")
 }
 
 class TcpConnector(inetSocketAddress: InetSocketAddress) extends ConnectorBase(inetSocketAddress) {
@@ -68,7 +75,8 @@ class CoapTcpServer(inetAddress: InetSocketAddress) {
     connector.started(ctx)
     val client = new CoapClient(toCoap(remote))
     client.setEndpoint(coapEndpoint)
-    client.get()
+    client.get(WriteToConsole)
+    client.observe(WriteToConsole)
   }
 
   val bossGroup = new NioEventLoopGroup(1)
