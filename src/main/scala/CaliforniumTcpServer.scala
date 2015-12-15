@@ -1,6 +1,7 @@
 import java.net.InetSocketAddress
 import java.util
 
+import com.sun.tools.javac.util.BasicDiagnosticFormatter.BasicConfiguration
 import io.netty.bootstrap.ServerBootstrap
 import io.netty.buffer.ByteBuf
 import io.netty.channel.nio.NioEventLoopGroup
@@ -9,6 +10,8 @@ import io.netty.channel.{ChannelHandlerContext, ChannelInitializer}
 import io.netty.channel.socket.SocketChannel
 import io.netty.handler.codec.{ByteToMessageCodec, MessageToByteEncoder}
 import io.netty.handler.logging.{LogLevel, LoggingHandler}
+import io.netty.util.internal.logging.{InternalLogLevel, InternalLoggerFactory}
+import org.apache.log4j.{Logger, BasicConfigurator}
 import org.eclipse.californium.core.server.resources.CoapExchange
 import org.eclipse.californium.core.{CoapResource, CoapServer}
 import org.eclipse.californium.elements.RawData
@@ -65,13 +68,16 @@ class CoapTcpServer(inetAddress: InetSocketAddress) {
 
 class CoapTcpChannelInitializer extends ChannelInitializer[SocketChannel] {
   override def initChannel(ch: SocketChannel): Unit = {
-    println(s"Accepted connection ${ch.remoteAddress()}")
     ch.pipeline()
       .addLast(new RawDataCodec)
-      .addLast(new LoggingHandler(LogLevel.DEBUG))
+      .addLast(new LoggingHandler(LogLevel.INFO))
   }
 }
 
+object RawDataCodec {
+  val logger = InternalLoggerFactory.getInstance(classOf[RawDataCodec])
+  def info(s: String) = logger.info(s)
+}
 class RawDataCodec extends ByteToMessageCodec[RawData] {
   override def encode(ctx: ChannelHandlerContext, msg: RawData, out: ByteBuf): Unit = {
     val size = msg.getSize
@@ -84,18 +90,15 @@ class RawDataCodec extends ByteToMessageCodec[RawData] {
       return
     in.markReaderIndex()
     val size = in.readUnsignedShort()
-    println(s"Read size is $size")
     if(!in.isReadable(size)) {
-      println(s"${in.readableBytes()} avaiable, needed $size, return")
       in.resetReaderIndex()
       return
     }
     val buf = new Array[Byte](size)
     in.readBytes(buf)
-    println(s"$size bytes read")
     val res = new RawData(buf, ctx.channel().asInstanceOf[SocketChannel].remoteAddress())
     val data = buf.map(_.toChar).mkString
-    println(s"Raw data: $data")
+    RawDataCodec.info(s"Received data: $data")
     out.add(res)
   }
 }
