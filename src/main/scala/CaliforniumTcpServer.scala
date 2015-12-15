@@ -11,8 +11,12 @@ import io.netty.channel._
 import io.netty.handler.codec.ByteToMessageCodec
 import io.netty.handler.logging.{LogLevel, LoggingHandler}
 import io.netty.util.internal.logging.InternalLoggerFactory
+import org.eclipse.californium.core.coap.Request
+import org.eclipse.californium.core.network.CoapEndpoint
+import org.eclipse.californium.core.network.config.NetworkConfig
+import org.eclipse.californium.core.network.serialization.{DataParser, Serializer}
 import org.eclipse.californium.core.server.resources.CoapExchange
-import org.eclipse.californium.core.{CoapResource, CoapServer}
+import org.eclipse.californium.core.{CoapClient, CoapResource, CoapServer}
 import org.eclipse.californium.elements.{RawDataChannel, ConnectorBase, RawData}
 
 /**
@@ -28,18 +32,6 @@ object CaliforniumTcpServer extends App {
   new CoapTcpServer(local).start
 }
 
-class Server extends CoapServer {
-  add(new HelloEndpoint)
-}
-
-class HelloEndpoint extends CoapResource("helloWorld") {
-  getAttributes.setTitle("Hello world resource")
-
-  override def handleGET(exchange: CoapExchange): Unit = {
-    exchange.respond("Hello, World")
-  }
-}
-
 class TcpConnector(inetSocketAddress: InetSocketAddress) extends ConnectorBase(inetSocketAddress) {
   def message(data: RawData): Unit = inboundMessageQueue.add(data)
   val inboundMessageQueue = new ConcurrentLinkedQueue[RawData]()
@@ -50,6 +42,7 @@ class TcpConnector(inetSocketAddress: InetSocketAddress) extends ConnectorBase(i
     }
     channelsRegistry.put(ctx.channel().remoteAddress().asInstanceOf[InetSocketAddress], ctx)
   }
+
 
   override def getName: String = s"TCP on $inetSocketAddress"
 
@@ -64,20 +57,25 @@ class TcpConnector(inetSocketAddress: InetSocketAddress) extends ConnectorBase(i
 }
 
 class CoapTcpServer(inetAddress: InetSocketAddress) {
+  def toCoap(a: InetSocketAddress): String =
+    s"coap://${a.getHostString}:${a.getPort}"
+
   val logger = InternalLoggerFactory.getInstance(classOf[CoapTcpServer])
   def message(data: RawData): Unit = connector.message(data)
 
   def started(ctx: ChannelHandlerContext): Unit = {
-    val hello = new RawData("hello".getBytes, ctx.channel().remoteAddress().asInstanceOf[InetSocketAddress])
+    val remote = ctx.channel().remoteAddress().asInstanceOf[InetSocketAddress]
     connector.started(ctx)
-    connector.send(hello)
+    val client = new CoapClient(toCoap(remote))
+    client.setEndpoint(coapEndpoint)
+    client.get()
   }
 
   val bossGroup = new NioEventLoopGroup(1)
   val workerGroup = new NioEventLoopGroup()
   val socketAcceptor = new AcceptListener
   val connector = new TcpConnector(inetAddress)
-
+  val coapEndpoint = new CoapEndpoint(connector, NetworkConfig.getStandard)
   def start: Unit = {
     val b = new ServerBootstrap()
     try {
@@ -120,8 +118,6 @@ class CoapChannelHandler(parent: CoapTcpServer) extends ChannelInboundHandlerAda
     super.channelActive(ctx)
     logger.info(s"Notifying father about started ${ctx.channel()}")
     parent.started(ctx)
-//    ctx.writeAndFlush(hello)
-//    ctx.close()
   }
 
   override def channelRead(ctx: ChannelHandlerContext, msg: scala.Any): Unit = {
@@ -130,14 +126,12 @@ class CoapChannelHandler(parent: CoapTcpServer) extends ChannelInboundHandlerAda
   }
 }
 
-object RawDataCodec {
-  private val logger = InternalLoggerFactory.getInstance(classOf[RawDataCodec])
-}
-
 class RawDataCodec extends ByteToMessageCodec[RawData] {
-  import RawDataCodec._
+  private val logger = InternalLoggerFactory.getInstance(classOf[RawDataCodec])
   override def encode(ctx: ChannelHandlerContext, msg: RawData, out: ByteBuf): Unit = {
     val size = msg.getSize
+    val p = new DataParser(msg.getBytes)
+    logger.info(s"Writing ${p.parseRequest()}")
     out.writeBytes("%02X".format(size).getBytes())
     out.writeBytes(msg.getBytes)
   }
