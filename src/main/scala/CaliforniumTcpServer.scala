@@ -7,7 +7,7 @@ import io.netty.buffer.ByteBuf
 import io.netty.channel.nio.NioEventLoopGroup
 import io.netty.channel.socket.SocketChannel
 import io.netty.channel.socket.nio.{NioSocketChannel, NioServerSocketChannel}
-import io.netty.channel.{Channel, ChannelHandlerContext, ChannelInboundHandlerAdapter, ChannelInitializer}
+import io.netty.channel._
 import io.netty.handler.codec.ByteToMessageCodec
 import io.netty.handler.logging.{LogLevel, LoggingHandler}
 import io.netty.util.internal.logging.InternalLoggerFactory
@@ -66,21 +66,7 @@ class CoapTcpServer(inetAddress: InetSocketAddress) {
   }
 }
 
-class AcceptListener extends LoggingHandler(LogLevel.INFO) {
-  val map = new ConcurrentHashMap[SocketAddress, NioSocketChannel]()
-
-  def writeToSocket(r: RawData): Unit = {
-    val socket = map.get(r.getAddress)
-    socket.writeAndFlush(r)
-  }
-
-  override def channelRead(ctx: ChannelHandlerContext, msg: scala.Any): Unit = {
-    val ch = msg.asInstanceOf[NioSocketChannel]
-    val address = ch.remoteAddress()
-    logger.info(s"Saving $address as reference to $ch")
-    map.put(address, ch)
-    super.channelRead(ctx, msg)
-  }
+class AcceptListener extends LoggingHandler(LogLevel.WARN) {
 
 }
 
@@ -89,6 +75,16 @@ class CoapTcpChannelInitializer extends ChannelInitializer[SocketChannel] {
     ch.pipeline()
       .addLast(new RawDataCodec)
       .addLast(new LoggingHandler(LogLevel.INFO))
+      .addLast(new CoapChannelHandler)
+  }
+}
+
+class CoapChannelHandler extends ChannelInboundHandlerAdapter {
+  val hello = new RawData("hello".getBytes)
+  override def channelActive(ctx: ChannelHandlerContext): Unit = {
+    super.channelActive(ctx)
+    ctx.writeAndFlush(hello)
+//    ctx.close()
   }
 }
 
@@ -100,7 +96,7 @@ class RawDataCodec extends ByteToMessageCodec[RawData] {
   import RawDataCodec._
   override def encode(ctx: ChannelHandlerContext, msg: RawData, out: ByteBuf): Unit = {
     val size = msg.getSize
-    out.writeShort(size)
+    out.writeBytes("%02X".format(size).getBytes())
     out.writeBytes(msg.getBytes)
   }
 
@@ -108,7 +104,11 @@ class RawDataCodec extends ByteToMessageCodec[RawData] {
     if(!in.isReadable(2))
       return
     in.markReaderIndex()
-    val size = in.readUnsignedShort()
+    val bytes = new Array[Byte](2)
+    in.readBytes(bytes)
+    val strSize = bytes.map{_.toChar}.mkString
+    val size = Integer.parseInt(strSize)
+    logger.info(s"Size is $strSize, $size")
     if(!in.isReadable(size)) {
       in.resetReaderIndex()
       return
