@@ -19,7 +19,7 @@ class RawDataCodec extends ByteToMessageCodec[RawData] {
     val size = msg.getSize
     val p = new DataParser(msg.getBytes)
     logger.info(s"Writing ${p.parseRequest()}")
-    out.writeBytes("%02X".format(size).getBytes())
+    out.writeInt(size)
     out.writeBytes(msg.getBytes)
   }
 
@@ -27,11 +27,7 @@ class RawDataCodec extends ByteToMessageCodec[RawData] {
     if(!in.isReadable(2))
       return
     in.markReaderIndex()
-    val bytes = new Array[Byte](2)
-    in.readBytes(bytes)
-    val strSize = bytes.map{_.toChar}.mkString
-    val size = Integer.parseInt(strSize)
-    logger.info(s"Size is $strSize, $size")
+    val size = in.readUnsignedShort()
     if(!in.isReadable(size)) {
       in.resetReaderIndex()
       return
