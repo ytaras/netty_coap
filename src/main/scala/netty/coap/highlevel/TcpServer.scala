@@ -20,8 +20,8 @@ trait TcpServer {
   def bindTo: InetSocketAddress
   val channelActiveListener = new ChannelInboundHandlerAdapter {
     override def channelActive(ctx: ChannelHandlerContext): Unit = {
-      onChannelActive(ctx)
       super.channelActive(ctx)
+      onChannelActive(ctx)
     }
   }
   val childHandler = new ChannelInitializer[SocketChannel] {
