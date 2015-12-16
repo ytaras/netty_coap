@@ -1,4 +1,4 @@
-package netty.coap.highlevel
+package netty.coap
 
 import java.net.InetSocketAddress
 

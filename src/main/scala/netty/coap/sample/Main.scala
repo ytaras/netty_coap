@@ -1,9 +1,9 @@
-package netty.coap.highlevel.sample
+package netty.coap.sample
 
 import java.net.InetSocketAddress
 
-import netty.coap.highlevel.Client
-import netty.coap.highlevel.impl.TcpCoapReverseClient
+import netty.coap.Client
+import netty.coap.impl.TcpCoapReverseClient
 import org.eclipse.californium.core.coap.CoAP.Code
 import org.eclipse.californium.core.coap.{Response, Request}
 import scala.concurrent.ExecutionContext.Implicits.global

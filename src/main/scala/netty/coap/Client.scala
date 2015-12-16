@@ -1,4 +1,4 @@
-package netty.coap.highlevel
+package netty.coap
 
 import org.eclipse.californium.core.CoapResponse
 import org.eclipse.californium.core.coap.Request

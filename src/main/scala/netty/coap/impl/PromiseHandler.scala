@@ -1,4 +1,4 @@
-package netty.coap.highlevel.impl
+package netty.coap.impl
 
 import org.eclipse.californium.core.{CoapHandler, CoapResponse}
 

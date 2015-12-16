@@ -1,18 +1,18 @@
-package netty.coap.highlevel.impl
+package netty.coap.impl
 
 import java.net.InetSocketAddress
 import java.util.concurrent.{ConcurrentHashMap, ConcurrentLinkedQueue}
 
 import io.netty.channel.ChannelHandler.Sharable
-import io.netty.channel.{ChannelInboundHandlerAdapter, ChannelHandlerContext}
 import io.netty.channel.socket.SocketChannel
+import io.netty.channel.{ChannelHandlerContext, ChannelInboundHandlerAdapter}
 import io.netty.util.internal.logging.InternalLoggerFactory
-import netty.coap.highlevel.{Client, CoapReverseClient, TcpServer}
+import netty.coap.{CoapReverseClient, TcpServer}
 import org.eclipse.californium.core.CoapClient
-import org.eclipse.californium.core.coap.{Message, Request, EmptyMessage, Response}
+import org.eclipse.californium.core.coap.{EmptyMessage, Message, Request, Response}
 import org.eclipse.californium.core.network.CoapEndpoint
 import org.eclipse.californium.core.network.config.NetworkConfig
-import org.eclipse.californium.core.network.interceptors.{MessageTracer, MessageInterceptor}
+import org.eclipse.californium.core.network.interceptors.MessageInterceptor
 import org.eclipse.californium.elements.{ConnectorBase, RawData}
 
 /**

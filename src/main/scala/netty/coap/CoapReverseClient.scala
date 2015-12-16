@@ -1,4 +1,4 @@
-package netty.coap.highlevel
+package netty.coap
 
 /**
   * Created by ytaras on 12/16/15.

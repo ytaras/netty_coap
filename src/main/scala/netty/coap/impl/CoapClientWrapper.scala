@@ -1,6 +1,6 @@
-package netty.coap.highlevel.impl
+package netty.coap.impl
 
-import netty.coap.highlevel.Client
+import netty.coap.Client
 import org.eclipse.californium.core.CoapClient
 
 import scala.concurrent.{Future, Promise}
