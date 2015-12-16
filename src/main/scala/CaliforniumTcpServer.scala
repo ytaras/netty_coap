@@ -12,7 +12,7 @@ import io.netty.handler.codec.ByteToMessageCodec
 import io.netty.handler.logging.{LogLevel, LoggingHandler}
 import io.netty.handler.timeout.ReadTimeoutHandler
 import io.netty.util.internal.logging.InternalLoggerFactory
-import netty.coap.RawDataCodec
+import netty.coap.highlevel.impl.RawDataCodec
 import org.eclipse.californium.core._
 import org.eclipse.californium.core.coap.Request
 import org.eclipse.californium.core.network.CoapEndpoint

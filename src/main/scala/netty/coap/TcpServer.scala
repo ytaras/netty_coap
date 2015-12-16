@@ -9,6 +9,7 @@ import io.netty.channel.socket.SocketChannel
 import io.netty.channel.socket.nio.NioServerSocketChannel
 import io.netty.handler.logging.{LogLevel, LoggingHandler}
 import io.netty.util.internal.logging.InternalLoggerFactory
+import netty.coap.highlevel.impl.RawDataCodec
 
 /**
   * Created by ytaras on 12/15/15.
@@ -46,7 +47,6 @@ class TcpChannelInitializer extends ChannelInitializer[SocketChannel] {
     ch.pipeline()
       .addLast(new LoggingHandler(LogLevel.INFO))
       .addLast(new RawDataCodec)
-      .addLast()
   }
 }
 

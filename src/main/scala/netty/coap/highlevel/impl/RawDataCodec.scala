@@ -1,4 +1,4 @@
-package netty.coap
+package netty.coap.highlevel.impl
 
 import java.util
 
