@@ -3,6 +3,7 @@ package netty.coap.highlevel.impl
 import java.net.InetSocketAddress
 import java.util.concurrent.{ConcurrentHashMap, ConcurrentLinkedQueue}
 
+import io.netty.channel.ChannelHandler.Sharable
 import io.netty.channel.{ChannelInboundHandlerAdapter, ChannelHandlerContext}
 import io.netty.channel.socket.SocketChannel
 import io.netty.util.internal.logging.InternalLoggerFactory
@@ -72,7 +73,7 @@ class TcpConnectorAwareCancelInterceptor(adapter: TcpConnectorAdapter) extends M
   override def sendResponse(response: Response): Unit = cancelIfNotPresent(response)
 }
 
-
+@Sharable
 class TcpConnectorAdapterHandler(connector: TcpConnectorAdapter) extends ChannelInboundHandlerAdapter {
   val logger = InternalLoggerFactory.getInstance(getClass)
 

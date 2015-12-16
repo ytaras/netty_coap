@@ -3,6 +3,7 @@ package netty.coap.highlevel
 import java.net.InetSocketAddress
 
 import io.netty.bootstrap.ServerBootstrap
+import io.netty.channel.ChannelHandler.Sharable
 import io.netty.channel.socket.SocketChannel
 import io.netty.channel.{ChannelHandlerContext, ChannelInboundHandlerAdapter, ChannelInitializer, ChannelHandler}
 import io.netty.channel.nio.NioEventLoopGroup
@@ -18,12 +19,16 @@ trait TcpServer {
   private val bossGroup = new NioEventLoopGroup(1)
   private val workerGroup = new NioEventLoopGroup()
   def bindTo: InetSocketAddress
-  val channelActiveListener = new ChannelInboundHandlerAdapter {
+
+  @Sharable
+  class ChannelActiveListener extends ChannelInboundHandlerAdapter {
     override def channelActive(ctx: ChannelHandlerContext): Unit = {
       super.channelActive(ctx)
       onChannelActive(ctx)
     }
   }
+  val channelActiveListener = new ChannelActiveListener
+
   val childHandler = new ChannelInitializer[SocketChannel] {
     override def initChannel(ch: SocketChannel): Unit = {
       ch
