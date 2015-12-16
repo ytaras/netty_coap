@@ -25,8 +25,8 @@ abstract class TcpCoapReverseClient(val bindTo: InetSocketAddress) extends TcpSe
   val adapterHandler = new TcpConnectorAdapterHandler(adapter)
 
   override def onChannelActive(ctx: ChannelHandlerContext): Unit = {
-    logger.info("two")
-    newClientActive(buildCoapClient(remoteAddr(ctx)))
+    val cc = buildCoapClient(remoteAddr(ctx))
+    newClientActive(new CoapClientWrapper(cc, ctx))
   }
 
   def socket(ctx: ChannelHandlerContext): SocketChannel =
@@ -39,7 +39,7 @@ abstract class TcpCoapReverseClient(val bindTo: InetSocketAddress) extends TcpSe
     val url = s"coap://${remoteAddr.getHostString}:${remoteAddr.getPort}/"
     val client = new CoapClient(url)
     client.setEndpoint(endpoint)
-    new CoapClientWrapper(client)
+    client
   }
 
   override def socketInit(ch: SocketChannel): Unit = {

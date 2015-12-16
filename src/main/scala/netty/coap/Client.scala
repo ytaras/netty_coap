@@ -12,5 +12,6 @@ trait Client {
   type Req = Request
   type Resp = CoapResponse
   def request(req: Req): Future[Resp]
+  def close(): Unit
   // TODO Client should be stopped when connection is closed?
 }

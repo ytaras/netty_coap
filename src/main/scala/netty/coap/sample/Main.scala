@@ -23,7 +23,9 @@ class SampleReverseClient(addr: InetSocketAddress) extends TcpCoapReverseClient(
     val req = new Request(Code.GET)
     req.setURI("/version")
     client.request(req).onSuccess {
-      case resp => println(s"Received $resp")
+      case resp =>
+        println(s"Received ${resp.getResponseText}")
+        client.close()
     }
     debug()
   }

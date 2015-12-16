@@ -18,8 +18,7 @@ class RawDataCodec extends ByteToMessageCodec[RawData] {
   override def encode(ctx: ChannelHandlerContext, msg: RawData, out: ByteBuf): Unit = {
     val size = msg.getSize
     val p = new DataParser(msg.getBytes)
-    logger.info(s"Writing ${p.parseRequest()}")
-    out.writeInt(size)
+    out.writeShort(size)
     out.writeBytes(msg.getBytes)
   }
 
@@ -28,6 +27,8 @@ class RawDataCodec extends ByteToMessageCodec[RawData] {
       return
     in.markReaderIndex()
     val size = in.readUnsignedShort()
+    if (size == 0)
+      throw new IllegalStateException("Message size can't be 0")
     if(!in.isReadable(size)) {
       in.resetReaderIndex()
       return
