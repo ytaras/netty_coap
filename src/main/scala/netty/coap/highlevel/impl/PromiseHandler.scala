@@ -1,6 +1,5 @@
 package netty.coap.highlevel.impl
 
-import netty.coap.highlevel.UnknownCoapException
 import org.eclipse.californium.core.{CoapHandler, CoapResponse}
 
 import scala.concurrent.Promise

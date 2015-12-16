@@ -14,7 +14,7 @@ import io.netty.util.internal.logging.InternalLoggerFactory
   * Created by ytaras on 12/16/15.
   */
 trait TcpServer {
-  private val logger = InternalLoggerFactory.getInstance(getClass)
+  val logger = InternalLoggerFactory.getInstance(getClass)
   private val bossGroup = new NioEventLoopGroup(1)
   private val workerGroup = new NioEventLoopGroup()
   def bindTo: InetSocketAddress
@@ -34,19 +34,19 @@ trait TcpServer {
     }
   }
 
-  def stop() = {
+  def stop(): Unit = {
     bossGroup.shutdownGracefully()
     workerGroup.shutdownGracefully()
   }
 
-  def start() = {
+  def start(): Unit = {
     val b = new ServerBootstrap()
     try {
       b.group(bossGroup, workerGroup)
       .channel(classOf[NioServerSocketChannel])
       .handler(parentHandler)
       .childHandler(childHandler)
-      b.bind(bindTo).sync()
+      b.bind(bindTo).sync().channel().closeFuture().sync()
     } finally {
       stop()
     }
