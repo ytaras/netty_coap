@@ -29,12 +29,14 @@ class SampleReverseClient(addr: InetSocketAddress) extends TcpCoapReverseClient(
   }
 
   override def newClientActive(client: Client[CoapClient]): Unit = {
+    val parentUrl = client.underlyingClient.getURI
     val req = new Request(Code.GET)
     req.setURI("/version")
     client.request(req).onSuccess {
       case resp =>
         logger.info(s"Received response to GET --> ${resp.getResponseText}")
-        client.underlyingClient.observe(observeHandler)
+        val newUri = parentUrl + "/audit"
+        client.underlyingClient.setURI(newUri).observe(observeHandler)
     }
     debug()
   }
