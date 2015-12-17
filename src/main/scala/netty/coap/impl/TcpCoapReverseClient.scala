@@ -18,7 +18,7 @@ import org.eclipse.californium.elements.{ConnectorBase, RawData}
 /**
   * Created by ytaras on 12/16/15.
   */
-abstract class TcpCoapReverseClient(val bindTo: InetSocketAddress) extends TcpServer with CoapReverseClient {
+abstract class TcpCoapReverseClient(val bindTo: InetSocketAddress) extends TcpServer with CoapReverseClient[CoapClient] {
   val adapter = new TcpConnectorAdapter(bindTo)
   val endpoint = new CoapEndpoint(adapter, NetworkConfig.getStandard)
   endpoint.addInterceptor(new TcpConnectorAwareCancelInterceptor(adapter))

@@ -18,6 +18,7 @@ class RawDataCodec extends ByteToMessageCodec[RawData] {
   override def encode(ctx: ChannelHandlerContext, msg: RawData, out: ByteBuf): Unit = {
     val size = msg.getSize
     val p = new DataParser(msg.getBytes)
+    logger.debug(s"Sending message $p")
     out.writeShort(size)
     out.writeBytes(msg.getBytes)
   }
@@ -37,7 +38,7 @@ class RawDataCodec extends ByteToMessageCodec[RawData] {
     in.readBytes(buf)
     val res = new RawData(buf, ctx.channel().asInstanceOf[SocketChannel].remoteAddress())
     val data = buf.map(_.toChar).mkString
-    logger.info(s"Received data: $data")
+    logger.info(s"Received data: $data, message ${new DataParser(buf)}")
     out.add(res)
   }
 }
