@@ -33,7 +33,7 @@ trait TcpServer {
     override def initChannel(ch: SocketChannel): Unit = {
       ch
         .pipeline()
-        .addLast(new LoggingHandler(getClass, LogLevel.INFO))
+        .addLast(new LoggingHandler(getClass, LogLevel.DEBUG))
         .addLast(channelActiveListener)
       socketInit(ch)
     }
@@ -57,7 +57,7 @@ trait TcpServer {
     }
   }
 
-  def parentHandler: ChannelHandler = new LoggingHandler(getClass, LogLevel.INFO)
+  def parentHandler: ChannelHandler = new LoggingHandler(getClass, LogLevel.DEBUG)
   def onChannelActive(ctx: ChannelHandlerContext): Unit
   def socketInit(ch: SocketChannel): Unit
 }

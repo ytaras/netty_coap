@@ -80,7 +80,6 @@ class TcpConnectorAdapterHandler(connector: TcpConnectorAdapter) extends Channel
   def socket(ctx: ChannelHandlerContext) = ctx.channel().asInstanceOf[SocketChannel]
 
   override def channelActive(ctx: ChannelHandlerContext): Unit = {
-    logger.info("One")
     connector.startedConnection(socket(ctx))
     super.channelActive(ctx)
   }

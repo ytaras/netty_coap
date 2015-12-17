@@ -3,6 +3,7 @@ package netty.coap.sample
 import java.net.InetSocketAddress
 
 import io.netty.bootstrap.Bootstrap
+import io.netty.channel.ChannelHandler.Sharable
 import io.netty.channel._
 import io.netty.channel.nio.NioEventLoopGroup
 import io.netty.channel.socket.SocketChannel
@@ -22,7 +23,9 @@ import scala.concurrent.duration.Duration
   * Created by ytaras on 12/16/15.
   */
 object SampleReverseServerApp extends App {
-  new SampleReverseServer(new InetSocketAddress(1234)).start()
+  (0 to 100).foreach { _ =>
+    new SampleReverseServer(new InetSocketAddress(1234)).start()
+  }
 }
 
 class SampleReverseServer(connectTo: InetSocketAddress) {
@@ -34,17 +37,18 @@ class SampleReverseServer(connectTo: InetSocketAddress) {
   b.handler(new ChannelInitializer[SocketChannel] {
     override def initChannel(ch: SocketChannel): Unit = {
       ch.pipeline()
-        .addLast(new LoggingHandler(LogLevel.INFO))
+        .addLast(new LoggingHandler(LogLevel.DEBUG))
         .addLast(new RawDataCodec)
         .addLast(PrintRawData)
     }
   })
   def start() = {
-    b.connect(connectTo).sync()
-      .channel().closeFuture().sync()
+    b.connect(connectTo)//.sync()
+//      .channel().closeFuture().sync()
   }
 }
 
+@Sharable
 object PrintRawData extends SimpleChannelInboundHandler[RawData] {
   val logger = InternalLoggerFactory.getInstance(getClass)
   val serializer = new Serializer

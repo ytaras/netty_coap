@@ -20,11 +20,11 @@ object SampleReverseClient extends App {
 
 }
 class SampleReverseClient(addr: InetSocketAddress) extends TcpCoapReverseClient(addr) {
-  val observeHandler = new CoapHandler {
+  class LogHandler(baseUri: String) extends CoapHandler {
     override def onError(): Unit = logger.error("Unknown error")
 
     override def onLoad(response: CoapResponse): Unit = {
-      logger.info(s"Received response to OBSERVE -> ${response.getResponseText}")
+      logger.info(s"Received response to OBSERVE on $baseUri -> ${response.getResponseText}")
     }
   }
 
@@ -36,7 +36,7 @@ class SampleReverseClient(addr: InetSocketAddress) extends TcpCoapReverseClient(
       case resp =>
         logger.info(s"Received response to GET --> ${resp.getResponseText}")
         val newUri = parentUrl + "/audit"
-        client.underlyingClient.setURI(newUri).observe(observeHandler)
+        client.underlyingClient.setURI(newUri).observe(new LogHandler(newUri))
     }
     debug()
   }

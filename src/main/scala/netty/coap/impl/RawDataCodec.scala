@@ -38,7 +38,7 @@ class RawDataCodec extends ByteToMessageCodec[RawData] {
     in.readBytes(buf)
     val res = new RawData(buf, ctx.channel().asInstanceOf[SocketChannel].remoteAddress())
     val data = buf.map(_.toChar).mkString
-    logger.info(s"Received data: $data, message ${new DataParser(buf)}")
+    logger.debug(s"Received data: $data, message ${new DataParser(buf)}")
     out.add(res)
   }
 }

@@ -14,4 +14,4 @@ libraryDependencies ++= Seq(
 
 resolvers += "Sonatype OSS Snapshots" at "https://oss.sonatype.org/content/repositories/snapshots"
 
-mainClass in Compile := Some("netty.coap.sample.Main")
+mainClass := Some("netty.coap.sample.SampleReverseClient")
