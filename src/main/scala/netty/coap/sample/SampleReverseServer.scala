@@ -86,7 +86,7 @@ class ObserveSend(sleep: Duration, observe: Int, ctx: ChannelHandlerContext, req
     resp.setToken(req.getToken)
     resp.setPayload(s"Payload for $current observation")
     resp.getOptions.setObserve(current)
-    resp.setType(Type.CON)
+    resp.setType(Type.NON)
     resp.setMID(req.getMID+current)
     ctx.channel().writeAndFlush(serializer.serialize(resp))
     Thread.sleep(sleep.toMillis)
